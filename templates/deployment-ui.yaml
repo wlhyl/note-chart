@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "teanote.fullname" . }}-ui
+  labels:
+    {{- include "teanote.labels" . | nindent 4 }}
+    app: ui
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "teanote.selectorLabels" . | nindent 6 }}
+      app: ui
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "teanote.selectorLabels" . | nindent 8 }}
+        app: ui
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "teanote.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}-ui
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.ui.repository }}:{{ .Values.image.ui.tag }}"
+          imagePullPolicy: {{ .Values.image.ui.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.ui.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+            timeoutSeconds: {{ .Values.livenessProbe.ui.timeoutSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: http
+            timeoutSeconds: {{ .Values.readinessProbe.ui.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

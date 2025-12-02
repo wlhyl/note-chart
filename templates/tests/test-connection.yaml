@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "teanote.fullname" . }}-test-connection"
+  labels:
+    {{- include "teanote.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "teanote.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

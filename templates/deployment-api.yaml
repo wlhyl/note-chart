@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "teanote.fullname" . }}-api
+  labels:
+    {{- include "teanote.labels" . | nindent 4 }}
+    app: api
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "teanote.selectorLabels" . | nindent 6 }}
+      app: api
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "teanote.selectorLabels" . | nindent 8 }}
+        app: api
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "teanote.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              value: "{{.Values.database.type}}://{{.Values.database.user}}:{{.Values.database.password}}@{{.Values.database.host}}/{{.Values.database.database}}"
+            - name: NOTE_USER
+              value: "{{ .Values.note.user }}"
+            - name: NOTE_PASSWORD
+              value: "{{ .Values.note.password }}"
+            - name: TZ
+              value: Asia/Shanghai
+          command: ["./bin/migration"]
+      containers:
+        - name: {{ .Chart.Name }}-api
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              value: "{{.Values.database.type}}://{{.Values.database.user}}:{{.Values.database.password}}@{{.Values.database.host}}/{{.Values.database.database}}"
+            - name: REDIS_URL
+              value: "redis://:{{.Values.redis.password}}@{{.Values.redis.host}}/{{.Values.redis.database}}"
+            - name: LOG4RS_CONFIG
+              value: /app/config/log4rs.yaml
+            - name: TOKEN_EXPIRE_SECONDS
+              value: "{{ .Values.token.expire_seconds }}"
+            - name: TZ
+              value: Asia/Shanghai
+            {{- if .Values.imageUpload.prefix }}
+            - name: image_prefix
+              value: "{{ .Values.imageUpload.prefix }}"
+            {{- end }}
+            {{- if .Values.imageUpload.tmp_dir }}
+            - name: tmp_dir
+              value: "{{ .Values.imageUpload.tmp_dir }}"
+            {{- end }}
+            - name: s3_endpoint
+              value: "{{ .Values.s3.endpoint }}"
+            - name: s3_bucket
+              value: "{{ .Values.s3.bucket }}"
+            - name: s3_access_key
+              value: "{{ .Values.s3.access_key }}"
+            - name: s3_secret_key
+              value: "{{ .Values.s3.secret_key }}"
+            {{- if .Values.s3.path_style }}
+            - name: s3_path_style
+              value: "{{ .Values.s3.path_style }}"
+            {{- end }}
+          {{- if .Values.s3.s3_region }}
+            - name: s3_region
+              value: "{{ .Values.s3.s3_region }}"
+            {{- end }}
+          volumeMounts:
+            - name: log4rs-config
+              mountPath: /app/config
+            - name: tmp-dir
+              {{- if .Values.imageUpload.tmp_dir }}
+              mountPath: "{{ .Values.imageUpload.tmp_dir }}"
+              {{- else }}
+              mountPath: /app/tmp
+              {{- end }}
+            # - name: localtime
+            #   mountPath: /etc/localtime
+            #   readOnly: true
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.api.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: http
+            timeoutSeconds: {{ .Values.livenessProbe.api.timeoutSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: http
+            timeoutSeconds: {{ .Values.readinessProbe.api.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: log4rs-config
+          configMap:
+            name: {{ include "teanote.fullname" . }}-log4rs-config
+        - name: tmp-dir
+          emptyDir: {}
+        # - name: localtime
+        #   hostPath: /etc/localtime
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}--
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
