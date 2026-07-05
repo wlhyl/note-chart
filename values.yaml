@@ -112,6 +112,17 @@ note:
   user: admin
   password: password
 
+# ui 配置
+ui:
+  # 是否启用 SSR (Server-Side Rendering) 模式，默认为 SPA 模式
+  ssr:
+    enabled: false
+    # SSR 模式下允许访问的主机列表
+    # 启用 ingress 时需要将其设置为对外访问的域名，例如：["localhost", "127.0.0.1", "note.example.com"]
+    allowedHosts:
+      - localhost
+      - 127.0.0.1
+
 #  token 过期时间，单位秒，默认值：86400(1天)
 token:
   expire_seconds: 86400

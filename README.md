@@ -53,6 +53,16 @@ note:
   user: your_username
   password: "your_password"
 
+# ui 配置
+# 启用 SSR 模式时，需要设置 allowedHosts 为对外访问的域名
+ui:
+  ssr:
+    enabled: false  # 启用 SSR 模式时设为 true
+    allowedHosts:
+      - localhost
+      - 127.0.0.1
+      - note.example.com
+
 # api 的日志级别，默认info
 # log:
 #   level: info

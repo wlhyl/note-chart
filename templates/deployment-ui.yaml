@@ -36,6 +36,11 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.ui.repository }}:{{ .Values.image.ui.tag }}"
           imagePullPolicy: {{ .Values.image.ui.pullPolicy }}
+          {{- if .Values.ui.ssr.enabled }}
+          env:
+            - name: NG_ALLOWED_HOSTS
+              value: "{{ join "," .Values.ui.ssr.allowedHosts }}"
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.ui.targetPort }}
